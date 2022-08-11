@@ -1,8 +1,12 @@
 # coding=utf-8
+import os
+import select
 import sys
 import termios
 import time
+import tty
 import rospy
+from actionlib_msgs.msg import GoalID
 from move_base_msgs.msg import MoveBaseActionGoal, MoveBaseActionResult
 from std_msgs.msg import String
 from dashgo_tools.msg import check_msgActionResult
@@ -10,7 +14,12 @@ from dashgo_tools.msg import check_msgActionResult
 from match import getKey, operation_keys
 
 node_list = []
-dic = {'四川': 0, '安徽': 1, '湖南': 2, '广东': 3, '浙江': 4, '江苏': 5, '福建': 6, '河南': 7}
+dic = {'四川': 0, '安徽': 1, '湖南': 2, '广东': 3, '浙江': 4, '江苏': 5, '福建': 6, '河南': 7, 'none': 0}
+
+start_ocr_pub = rospy.Publisher('/start_ocr', String, queue_size=1)  # 开始orc指令发布器
+goal_pub = rospy.Publisher('move_base/goal', MoveBaseActionGoal, queue_size=1)  # 目标点发布器
+check_pub = rospy.Publisher('check', String, queue_size=1)  # 微调发布器
+pause_nav = rospy.Publisher('move_base/cancel', GoalID, queue_size=1)  # 暂停导航发布器
 
 
 class NodeCoordinate:
@@ -51,7 +60,6 @@ def nav_callback(data):
             # 机械臂伸展开
             # TODO
             time.sleep(2)
-
             start_ocr_pub.publish("start_ocr")
             ocr_result = rospy.wait_for_message('/ocr_result', String, timeout=None)
             result = str(ocr_result).split('_')
@@ -60,6 +68,7 @@ def nav_callback(data):
             y = result[2]
             # 机械臂抓取
             # TODO
+            time.sleep(2)
             # 机械臂将邮件放到车上
             # TODO
             time.sleep(2)
@@ -71,6 +80,7 @@ def nav_callback(data):
             time.sleep(2)
             # 机械臂归位
             # TODO
+            time.sleep(2)
 
     else:
         print("导航失败")
@@ -80,21 +90,20 @@ def init_listener():
     rospy.Subscriber('move_base/result', MoveBaseActionResult, nav_callback)  # 订阅导航结果话题数据
 
 
-def init_publisher():
-    global start_ocr_pub
-    start_ocr_pub = rospy.Publisher('/start_ocr', String, queue_size=1)
-    goal_pub = rospy.Publisher('move_base/goal', MoveBaseActionGoal, queue_size=1)  # 目标点发布器
-    # 目标点里面的goal_id的id与上一次的id不能相同
-    check_pub = rospy.Publisher('check', String, queue_size=1)  # 微调发布器
-    pause_nav = rospy.Publisher('move_base/cancel', GoalID, queue_size=1)  # 暂停导航发布器
+def get_key():
+    tty.setraw(sys.stdin.fileno())
+    select.select([sys.stdin], [], [], 0)
+    key = sys.stdin.read(1)
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+    return key
 
 
 def init_key_listener():
     global settings
     settings = termios.tcgetattr(sys.stdin)
     try:
-        while (1):
-            key = getKey()
+        while 1:
+            key = get_key()
             if key in operation_keys:
                 print(key)
                 if key == 'k':
@@ -125,5 +134,7 @@ def load_nodes():
 
 if __name__ == '__main__':
     rospy.init_node('eaibot_main_node', anonymous=True)
+    init_listener()
+    init_key_listener()
     load_nodes()
     main()
