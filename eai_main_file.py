@@ -9,10 +9,9 @@ import rospy
 from actionlib_msgs.msg import GoalID
 from move_base_msgs.msg import MoveBaseActionGoal, MoveBaseActionResult
 from std_msgs.msg import String
-from dashgo_tools.msg import check_msgActionResult
 
-from match import getKey, operation_keys
-
+operation_keys = ['1','2', '3', '4', 'k']
+now_goal = '0'  # 记录当前导航目标点
 node_list = []
 dic = {'四川': 0, '安徽': 1, '湖南': 2, '广东': 3, '浙江': 4, '江苏': 5, '福建': 6, '河南': 7, 'none': 0}
 
@@ -35,7 +34,8 @@ class NodeCoordinate:
 
 
 def send_goal(i):  # Go to point i
-    pub = rospy.Publisher('move_base/goal', MoveBaseActionGoal, queue_size=1)
+    global now_goal
+    now_goal = i
     goal_msg = MoveBaseActionGoal()
     goal_msg.goal_id.id = i + '_' + time.time()
     goal_msg.goal.target_pose.pose.position.x = node_list[i].p[0]
@@ -45,7 +45,7 @@ def send_goal(i):  # Go to point i
     goal_msg.goal.target_pose.pose.orientation.y = node_list[i].p[4]
     goal_msg.goal.target_pose.pose.orientation.z = node_list[i].p[5]
     goal_msg.goal.target_pose.pose.orientation.w = node_list[i].p[6]
-    pub.publish(goal_msg)
+    goal_pub.publish(goal_msg)
 
 
 def main():
@@ -64,8 +64,8 @@ def nav_callback(data):
             ocr_result = rospy.wait_for_message('/ocr_result', String, timeout=None)
             result = str(ocr_result).split('_')
             destination = result[0]
-            x = result[1]
-            y = result[2]
+            x = int(result[1])
+            y = int(result[2])
             # 机械臂抓取
             # TODO
             time.sleep(2)
@@ -112,9 +112,9 @@ def init_key_listener():
                     time.sleep(1)
                     os._exit(1)  # 关闭程序
                 if key == '1':
-                    print(recvData + '恢复导航\n')
+                    send_goal(now_goal)
                 if key == '2':
-                    print('暂停导航')
+                    print('已经暂停导航')
                     pause_nav.publish(GoalID())  # 暂停导航
     except Exception as e:
         print e
