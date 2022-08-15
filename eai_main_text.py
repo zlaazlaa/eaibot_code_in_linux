@@ -107,6 +107,8 @@ def nav_callback(data):
         goal_name = data.status.goal_id.id.split('_')[0]
         if goal_name >= '8':  # 到达分拣台
             print("到达分拣台")
+            start_ocr_pub = rospy.Publisher('start_ocr', String, queue_size=10)  # 开始orc指令发布器
+            time.sleep(3)
             start_ocr_pub.publish("start_ocr")
             ocr_result = rospy.wait_for_message('ocr_result', String, timeout=None)
             print("识别完毕")

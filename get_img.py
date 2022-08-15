@@ -29,7 +29,7 @@ def listener():
     print(imgdata)
     imgdata = imgdata[:, :, ::-1]
     imgdata = cv2.flip(imgdata, 0)
-    cv2.imwrite("/home/eaibot/cam_test_raw.jpg", imgdata)
+    cv2.imwrite("./images/cam_test_raw.jpg", imgdata)
 
 
 if __name__ == "__main__":
