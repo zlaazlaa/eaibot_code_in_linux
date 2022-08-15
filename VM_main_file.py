@@ -9,7 +9,7 @@ from std_msgs.msg import String
 
 def start_ocr(data):
     print("收到开始信号")
-    if data == 'start_ocr':
+    if data != "":
         print("correct")
         os.system('python2 ./get_img.py')
         time.sleep(2)
@@ -23,6 +23,8 @@ def start_ocr(data):
         rate = rospy.Rate(100)  # 100hz
         result_pub.publish(result_str)
         rate.sleep()
+    else:
+        print("error")
 
 
 def init_pub():

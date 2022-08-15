@@ -72,7 +72,7 @@ def nav_callback(data):
             # 机械臂将邮件放到车上
             # TODO
             time.sleep(2)
-            send_goal(dic[destination])  # 去往目的地
+            send_goal(destination)  # 去往目的地
 
         else:  # 到达省份盒子
             # 机械臂将快件放到盒子里

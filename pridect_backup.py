@@ -35,6 +35,8 @@ LABELS = ['北京', '天津', '辽宁', '甘肃', '福建', '山东', '湖北', 
           '山西', '广东', '台湾', '广西', '宁夏', '香港', '上海', '重庆', '吉林', '青海', '浙江',
           '安徽', '湖南', '陕西', '江西', '河南', '贵州', '海南', '西藏', '新疆', '澳门', '内蒙古', '黑龙江']
 
+dic = {'四川': 0, '安徽': 1, '湖南': 2, '广东': 3, '浙江': 4, '江苏': 5, '福建': 6, '河南': 7, 'None': 0}
+
 
 class TextSystem(object):
     """总的检测类, 完成目标检测, 文本检测, 文本识别
@@ -260,18 +262,20 @@ def main(image_dir, det_model_dir, rec_model_dir, picodet_model_dir):
     # 记录原图像的高和宽
     original_height, original_width = original_image.shape[:2]
     # 计算图像的高宽之比
-    ratio = original_height * 1. / original_width
-    # 缩小图片, 利于目标检测
+    ratio = original_height * 1. / original_width    # 缩小图片, 利于目标检测
     img = cv2.resize(original_image, (320, int(320 * ratio)), interpolation=cv2.INTER_LINEAR)
     # 预测推理, 进行以此目标检测, 文本检测, 文本识别, 返回文字识别结果(未筛选)、邮件检测框、文字检测框
     rec_res, bbox, dt_boxes = text_sys(img, original_image, original_width / 320)
     # 对文本识别得到的结果进行筛选, 获得最终的文字识别结果
     rec = get_text(rec_res)
     print("rec: ", rec)
+
+    rec_str = dic[rec]
+
     # 计算目标中心坐标(x, y)
     center_xy = (int((bbox[0] + bbox[2]) / 2), int((bbox[1] + bbox[3]) / 2))
     # 每张图片的识别结果
-    text = u"%s_%d_%d;" % (rec, center_xy[0], center_xy[1])
+    text = "%s_%d_%d" % (rec_str, center_xy[0], center_xy[1])
     # 写入result.txt
     f.write(text)
     # 显示结果函数, 显示原图和处理后的图片

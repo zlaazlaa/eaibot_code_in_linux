@@ -60,8 +60,11 @@ class NodeCoordinate:
 
 
 def send_goal(i):  # Go to point i
+    if int(i) > 27:
+        return
     global desk_goal
-    desk_goal = int(i)
+    if int(i) >= 8:
+        desk_goal = int(i)
     global now_goal
     now_goal = i
     goal_msg = MoveBaseActionGoal()
@@ -82,6 +85,7 @@ def send_goal(i):  # Go to point i
 
 def main():
     init_listener()
+    init_sub()
     time.sleep(3)
     rospy.wait_for_service('DobotServer/SetHOMECmd')
     rospy.wait_for_service('DobotServer/SetPTPCmd')
@@ -102,20 +106,33 @@ def main():
 
 
 def nav_callback(data):
-    print(data)
+    # print(data)
     if data.status.status == 3:
         goal_name = data.status.goal_id.id.split('_')[0]
-        if goal_name >= '8':  # 到达分拣台
+        print("goal_name=" + goal_name)
+        if int(goal_name) >= 8:  # 到达分拣台
             print("到达分拣台")
             start_ocr_pub = rospy.Publisher('start_ocr', String, queue_size=10)  # 开始orc指令发布器
             time.sleep(3)
             start_ocr_pub.publish("start_ocr")
             ocr_result = rospy.wait_for_message('ocr_result', String, timeout=None)
             print("识别完毕")
-            result = str(ocr_result).split('_')
+            print(len(str(ocr_result)))
+            if len(str(ocr_result)) <= 9:
+                send_goal(str(desk_goal + 1))
+                return
+            result = str(ocr_result).split('"')[1]
+
+            result = result.split("_")
+            # print(ocr_result)
+            # print(str(ocr_result))
+            # print(result[0])
+            # print(result[1])
+            # print(result[2])
+
             destination = result[0]
-            x = int(result[1])
-            y = int(result[2])
+            x = int(float(result[1]))
+            y = int(float(result[2]))
             # 机械臂抓取
             # TODO
             rospy.wait_for_service('DobotServer/SetEndEffectorSuctionCup')
@@ -125,8 +142,8 @@ def nav_callback(data):
                 end_client = rospy.ServiceProxy('DobotServer/SetEndEffectorSuctionCup', SetEndEffectorSuctionCup)
                 PTP_client = rospy.ServiceProxy('DobotServer/SetPTPCmd', SetPTPCmd)
                 response = PTP_client(1, grap_up_x, grap_up_y, grap_up_z, grap_up_r)  # houmian,shangfang
-                new_x = int(grap_up_x + 1.25 * (160 - x))
-                new_y = int(grap_up_y + 1.25 * (120 - y))
+                new_x = int(grap_up_x + 0.125 * (160 - x))
+                new_y = int(grap_up_y + 0.125 * (120 - y))
                 response = PTP_client(1, new_x, new_y, grap_down_z, grap_down_r)  # houmian,fangxia
                 response = end_client(1, 1, True)
                 rospy.sleep(t1)
@@ -140,8 +157,8 @@ def nav_callback(data):
             except rospy.ServiceException, e:
                 print
                 "Service call failed: %s" % e
-            time.sleep(2)
-            send_goal(dic[destination])  # 去往目的地
+            time.sleep(4)
+            send_goal(str(destination))  # 去往目的地
 
         else:  # 到达省份盒子
             # 机械臂将快件放到盒子里
@@ -174,11 +191,21 @@ def init_listener():
     global goal_pub
     global check_pub
     global pause_nav
-    rospy.Subscriber('move_base/result', MoveBaseActionResult, nav_callback)  # 订阅导航结果话题数据
+
     start_ocr_pub = rospy.Publisher('start_ocr', String, queue_size=1)  # 开始orc指令发布器
     goal_pub = rospy.Publisher('move_base/goal', MoveBaseActionGoal, queue_size=1)  # 目标点发布器
     check_pub = rospy.Publisher('check', String, queue_size=1)  # 微调发布器
     pause_nav = rospy.Publisher('move_base/cancel', GoalID, queue_size=1)  # 暂停导航发布器
+
+
+def thread_spin():
+    rospy.spin()
+
+
+def init_sub():
+    rospy.Subscriber('move_base/result', MoveBaseActionResult, nav_callback)  # 订阅导航结果话题数据
+    t1 = threading.Thread(target=thread_spin)  # 末端位置订阅线程
+    t1.start()
 
 
 def get_key():
@@ -219,7 +246,7 @@ def load_nodes():
     #     node_list.append(NodeCoordinate())
 
     f = open("node_coordinate.txt", "r")
-    for i in range(12):
+    for i in range(28):
         p_x = f.readline()
         p_y = f.readline()
         p_z = f.readline()
