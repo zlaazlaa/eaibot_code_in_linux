@@ -6,6 +6,8 @@ import termios
 import threading
 import time
 import tty
+from random import random
+
 import rospy
 from actionlib_msgs.msg import GoalID
 from move_base_msgs.msg import MoveBaseActionGoal, MoveBaseActionResult
@@ -118,21 +120,24 @@ def nav_callback(data):
             ocr_result = rospy.wait_for_message('ocr_result', String, timeout=None)
             print("识别完毕")
             print(len(str(ocr_result)))
+            destination = '0'
             if len(str(ocr_result)) <= 9:
-                send_goal(str(desk_goal + 1))
-                return
-            result = str(ocr_result).split('"')[1]
-
-            result = result.split("_")
-            # print(ocr_result)
-            # print(str(ocr_result))
-            # print(result[0])
-            # print(result[1])
-            # print(result[2])
-
-            destination = result[0]
-            x = int(float(result[1]))
-            y = int(float(result[2]))
+                destination = str(random.randint(0, 7))
+                x = 160
+                y = 120
+                # send_goal(str(desk_goal + 1))
+                # return
+            else:
+                result = str(ocr_result).split('"')[1]
+                result = result.split("_")
+                # print(ocr_result)
+                # print(str(ocr_result))
+                # print(result[0])
+                # print(result[1])
+                # print(result[2])
+                destination = result[0]
+                x = int(float(result[1]))
+                y = int(float(result[2]))
             # 机械臂抓取
             # TODO
             rospy.wait_for_service('DobotServer/SetEndEffectorSuctionCup')
